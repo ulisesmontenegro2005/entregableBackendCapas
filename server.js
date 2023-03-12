@@ -13,6 +13,8 @@ dotenv.config();
 
 // MONGOOSE && SQLITE3
 db.connect();
+const products = [];
+const sqlProducts = new ProductsClienteSQL(ProductsOptions);
 
 // DIRNAME
 import path from 'path';
@@ -47,16 +49,14 @@ app.set('view engine', '.hbs')
 app.use('/', routes);
 
 // --- SOCKET.IO
-const products = []
 const dbClass = new db.Mongo;
-io.on('connection', socket => {
+
+io.on('connection', async socket => {
     console.log('New user connected');
 
         socket.emit('products', products);
         socket.on('update-products', data => {
             products.push(data);
-
-            const sqlProducts = new ProductsClienteSQL(ProductsOptions);
 
             sqlProducts.crearTabla()
             .then(() => {
@@ -72,25 +72,13 @@ io.on('connection', socket => {
             io.sockets.emit('products', products);
         })
 
-        dbClass.getMsg()
-        .then(d => {
-            socket.emit('messages', d)
-        })
-        .catch(err => {
-            console.log(err);
-        })
+        let d = await dbClass.getMsg()
+        socket.emit('messages', d)
 
         socket.on('update-chat', async data => {
-
-            dbClass.addMsgMongo(data)
-
-            dbClass.getMsg()
-            .then(data2 => {
-                io.sockets.emit('messages', data2)
-            })
-            .catch(err => {
-                console.log(err);
-            })
+            await dbClass.addMsgMongo(data)
+            let data2 = await dbClass.getMsg()
+            io.sockets.emit('messages', data2)
         })
 })
 
